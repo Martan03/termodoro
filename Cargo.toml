@@ -1,0 +1,10 @@
+[package]
+name = "termodoro"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+duration-str = "0.18.0"
+pareg = "0.11.2"
+termint = "0.6.1"
+thiserror = "2.0.17"

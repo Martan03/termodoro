@@ -12,7 +12,6 @@ impl Args {
     /// Returns parsed CLI arguments
     ///
     /// # Errors
-    ///
     /// Returns an [`Error`] if an issue with parsing arguments occures.
     pub fn parse(mut args: Pareg) -> Result<Self, Error> {
         let mut parsed = Self::default();

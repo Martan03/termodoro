@@ -9,6 +9,7 @@ use pareg::Pareg;
 use termint::termal::eprintcln;
 
 use crate::{
+    app::App,
     args::{action::Action, app::AppArgs, args_struct::Args},
     error::Error,
 };
@@ -43,8 +44,8 @@ fn run() -> Result<(), Error> {
 
 fn run_app(args: AppArgs) -> Result<(), Error> {
     let timer = args.export();
-    println!("{:?}", timer);
-    Ok(())
+    let mut app = App::new(timer);
+    app.run()
 }
 
 fn register_panic_hook() {

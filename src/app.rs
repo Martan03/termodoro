@@ -7,15 +7,28 @@ use crossterm::{
     event::{Event, KeyEvent, poll},
     terminal::{disable_raw_mode, enable_raw_mode},
 };
+use termint::term::Term;
 
-use crate::error::Error;
+use crate::{error::Error, timer::Timer, tui::screen::Screen};
 
-#[derive(Debug, Clone)]
-pub struct App {}
+#[derive(Debug)]
+pub struct App {
+    pub screen: Screen,
+    pub term: Term,
+}
 
 impl App {
-    pub fn new() -> Self {
-        Self {}
+    /// Creates new app, if timer is None it displays pomodoro interval
+    /// selector, otherwise opens the timer page.
+    pub fn new(timer: Option<Timer>) -> Self {
+        let screen = match timer {
+            Some(t) => Screen::timer(t),
+            None => Screen::selector(),
+        };
+        Self {
+            screen,
+            term: Term::new(),
+        }
     }
 
     /// Runs the app - does prep. work before main loop and then clean up
@@ -44,11 +57,13 @@ impl App {
             if poll(Duration::from_millis(100))? {
                 self.event()?;
             }
+
+            self.screen.update(&mut self.term)?;
         }
     }
 
     fn render(&mut self) -> Result<(), Error> {
-        todo!()
+        self.screen.render(&mut self.term)
     }
 
     fn event(&mut self) -> Result<(), Error> {
@@ -59,7 +74,10 @@ impl App {
         }
     }
 
-    fn key_handler(&mut self, _event: KeyEvent) -> Result<(), Error> {
-        todo!()
+    fn key_handler(&mut self, event: KeyEvent) -> Result<(), Error> {
+        if let Some(screen) = self.screen.on_key(&mut self.term, event)? {
+            self.screen = screen;
+        }
+        Ok(())
     }
 }

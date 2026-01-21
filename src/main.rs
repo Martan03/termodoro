@@ -1,10 +1,15 @@
-use std::process::ExitCode;
+use std::{
+    io::{Write, stdout},
+    panic::{set_hook, take_hook},
+    process::ExitCode,
+};
 
+use crossterm::terminal::{disable_raw_mode, is_raw_mode_enabled};
 use pareg::Pareg;
 use termint::termal::eprintcln;
 
 use crate::{
-    args::{action::Action, args_struct::Args},
+    args::{action::Action, app::AppArgs, args_struct::Args},
     error::Error,
 };
 
@@ -25,11 +30,32 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<(), Error> {
+    register_panic_hook();
+
     let args = Args::parse(Pareg::args())?;
     match args.action {
-        Action::App(timer) => println!("{:?}", timer),
+        Action::App(args) => run_app(args)?,
         Action::Help => println!("help wip"),
     }
 
     Ok(())
+}
+
+fn run_app(args: AppArgs) -> Result<(), Error> {
+    let timer = args.export();
+    println!("{:?}", timer);
+    Ok(())
+}
+
+fn register_panic_hook() {
+    let hook = take_hook();
+    set_hook(Box::new(move |pi| {
+        if is_raw_mode_enabled().unwrap_or_default() {
+            // Restores screen
+            print!("\x1b[?1049l\x1b[?25h");
+            _ = stdout().flush();
+            _ = disable_raw_mode();
+        }
+        hook(pi);
+    }));
 }

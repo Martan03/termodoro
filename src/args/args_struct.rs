@@ -1,7 +1,12 @@
+use std::time::Duration;
+
 use duration_str::parse;
 use pareg::Pareg;
 
-use crate::{args::action::Action, error::Error, timer::Timer};
+use crate::{
+    args::{action::Action, app::AppArgs},
+    error::Error,
+};
 
 #[derive(Debug, Clone, Default)]
 pub struct Args {
@@ -26,12 +31,16 @@ impl Args {
     }
 
     fn parse_app(&mut self, args: &mut Pareg) -> Result<(), Error> {
+        let mut app = AppArgs::default();
         while let Some(arg) = args.next() {
             match arg {
-                "-t" | "--timer" => {
-                    let work = parse(args.next_arg::<&str>()?)?;
-                    let rest = parse(args.next_arg::<&str>()?)?;
-                    self.action = Action::App(Some(Timer::new(work, rest)));
+                "-w" | "--work" => app.work = Some(Self::read_dur(args)?),
+                "-r" | "--rest" => app.rest = Some(Self::read_dur(args)?),
+                "-l" | "--long-rest" => {
+                    app.long_rest = Some(Self::read_dur(args)?)
+                }
+                "-i" | "--intervals" => {
+                    app.long_rate = Some(args.next_arg()?)
                 }
                 _ => {
                     return Err(
@@ -40,6 +49,11 @@ impl Args {
                 }
             }
         }
+        self.action = Action::App(app);
         Ok(())
+    }
+
+    fn read_dur(args: &mut Pareg) -> Result<Duration, Error> {
+        Ok(parse(args.next_arg::<&str>()?)?)
     }
 }

@@ -1,14 +1,14 @@
-use crate::timer::Timer;
+use crate::args::app::AppArgs;
 
 /// CLI arguments available actions
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
-    App(Option<Timer>),
+    App(AppArgs),
     Help,
 }
 
 impl Default for Action {
     fn default() -> Self {
-        Self::App(None)
+        Self::App(AppArgs::default())
     }
 }

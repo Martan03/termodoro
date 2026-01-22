@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, rc::Rc, time::Duration};
 
 use crossterm::event::{KeyCode, KeyEvent};
 use termint::{
@@ -11,7 +11,7 @@ use termint::{
     },
 };
 
-use crate::{error::Error, tui::screen::Screen};
+use crate::{error::Error, timer::Timer, tui::screen::Screen};
 
 #[derive(Debug, Clone)]
 pub struct Selector {
@@ -20,7 +20,7 @@ pub struct Selector {
 
 impl Selector {
     pub fn render(&self, term: &mut Term) -> Result<(), Error> {
-        let items = vec!["50/10", "25/5"];
+        let items = vec!["50/10 (30@4)", "25/5 (15@4)"];
         let list = List::new(items, self.state.clone())
             .auto_scroll()
             .highlight_symbol("> ")
@@ -50,6 +50,7 @@ impl Selector {
         match event.code {
             KeyCode::Up | KeyCode::Char('k') => self.select_prev(),
             KeyCode::Down | KeyCode::Char('j') => self.select_next(),
+            KeyCode::Enter => return Ok(self.pick()),
             KeyCode::Esc | KeyCode::Char('q') => return Err(Error::Exit),
             _ => return Ok(None),
         }
@@ -65,6 +66,18 @@ impl Selector {
         ])
         .separator(" ")
         .into()
+    }
+
+    fn pick(&self) -> Option<Screen> {
+        let state = self.state.borrow();
+        let Some(sel) = state.selected else {
+            return None;
+        };
+        match sel {
+            0 => Some(Screen::timer(Timer::new(Duration::from_mins(50)))),
+            1 => Some(Screen::timer(Timer::new(Duration::from_mins(25)))),
+            _ => None,
+        }
     }
 
     fn select_prev(&mut self) {

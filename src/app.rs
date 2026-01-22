@@ -77,6 +77,7 @@ impl App {
     fn key_handler(&mut self, event: KeyEvent) -> Result<(), Error> {
         if let Some(screen) = self.screen.on_key(&mut self.term, event)? {
             self.screen = screen;
+            self.render()?;
         }
         Ok(())
     }

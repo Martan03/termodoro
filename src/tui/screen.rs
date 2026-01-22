@@ -7,7 +7,7 @@ use crate::{
     tui::{active::Active, selector::Selector},
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Screen {
     Selector(Selector),
     Timer(Active),
@@ -15,7 +15,7 @@ pub enum Screen {
 
 impl Screen {
     pub fn selector() -> Self {
-        Self::Selector(Selector)
+        Self::Selector(Selector::default())
     }
 
     pub fn timer(timer: Timer) -> Self {

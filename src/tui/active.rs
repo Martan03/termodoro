@@ -1,11 +1,17 @@
-use std::time::{Duration, Instant};
+use std::{
+    cell::Cell,
+    rc::Rc,
+    time::{Duration, Instant},
+};
 
 use chrono::{DateTime, Local};
 use crossterm::event::{KeyCode, KeyEvent};
 use termint::{
+    enums::Color,
     geometry::Constraint,
+    style::Style,
     term::Term,
-    widgets::{Layout, Spacer},
+    widgets::{Layout, ProgressBar, Spacer},
 };
 
 use crate::{
@@ -43,13 +49,25 @@ impl Active {
 
     pub fn render(&self, term: &mut Term) -> Result<(), Error> {
         term.clear_cache();
-        let time = self.asci.element(self.format_remaining());
+        let (time, width) = self.asci.element(self.format_remaining());
+        let progress = self.progress();
+        let pb = ProgressBar::new(Rc::new(Cell::new(progress)))
+            .style(Style::new().bg(Color::Gray))
+            .thumb_chars(['█']);
+
+        let mut pb_label = Layout::horizontal();
+        pb_label.push(format!("{}%", progress as usize), 2..);
+        pb_label.push(Spacer::new(), Constraint::Fill(1));
+        pb_label.push(self.format_deadline(), 0..);
 
         let mut content = Layout::vertical();
         content.push(time, self.asci.height);
+        content.push(Spacer::new(), 1);
+        content.push(pb, 1);
+        content.push(pb_label, 1);
 
         let mut wrapper = Layout::horizontal().center();
-        wrapper.push(content, 0..);
+        wrapper.push(content, width + 1);
 
         let mut main = Layout::vertical();
         main.push(Spacer::new(), Constraint::Fill(1));
@@ -88,6 +106,11 @@ impl Active {
             Some(t) => self.deadline.saturating_duration_since(t),
             None => self.deadline.saturating_duration_since(Instant::now()),
         }
+    }
+
+    fn progress(&self) -> f64 {
+        (1. - (self.remaining().as_secs_f64() / self.total().as_secs_f64()))
+            * 100.
     }
 
     fn format_remaining(&self) -> String {

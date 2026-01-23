@@ -24,7 +24,7 @@ impl AsciTimer {
         Self { digits, height }
     }
 
-    pub fn element(&self, time: String) -> Element {
+    pub fn element(&self, time: String) -> (Element, usize) {
         let mut lines = vec![String::new(); self.height];
         for digit in time.chars() {
             let Some(asci) = self.digits.get(&digit) else {
@@ -34,9 +34,12 @@ impl AsciTimer {
                 lines[i].push_str(asci[i]);
             }
         }
-        Grad::new(lines.join("\n"), (0, 220, 255), (160, 100, 255))
-            .wrap(Wrap::Letter)
-            .into()
+        (
+            Grad::new(lines.join("\n"), (0, 220, 255), (160, 100, 255))
+                .wrap(Wrap::Letter)
+                .into(),
+            lines[0].chars().count(),
+        )
     }
 }
 
@@ -53,45 +56,54 @@ fn get_regular() -> (HashMap<char, Vec<&'static str>>, usize) {
                     r"  ██████ ",
                 ],
             ),
-            ('1', vec![r"  ██", r" ███", r"  ██", r"  ██", r"  ██"]),
+            (
+                '1',
+                vec![
+                    r"    ██   ",
+                    r"   ███   ",
+                    r"    ██   ",
+                    r"    ██   ",
+                    r"    ██   ",
+                ],
+            ),
             (
                 '2',
                 vec![
-                    r" ██████ ",
-                    r"      ██",
-                    r"  █████ ",
-                    r" ██     ",
-                    r" ███████",
+                    r" ██████  ",
+                    r"      ██ ",
+                    r"  █████  ",
+                    r" ██      ",
+                    r" ███████ ",
                 ],
             ),
             (
                 '3',
                 vec![
-                    r" ██████ ",
-                    r"      ██",
-                    r"  █████ ",
-                    r"      ██",
-                    r" ██████ ",
+                    r" ██████  ",
+                    r"      ██ ",
+                    r"  █████  ",
+                    r"      ██ ",
+                    r" ██████  ",
                 ],
             ),
             (
                 '4',
                 vec![
-                    r" ██   ██",
-                    r" ██   ██",
-                    r" ███████",
-                    r"      ██",
-                    r"      ██",
+                    r" ██   ██ ",
+                    r" ██   ██ ",
+                    r" ███████ ",
+                    r"      ██ ",
+                    r"      ██ ",
                 ],
             ),
             (
                 '5',
                 vec![
-                    r" ███████",
-                    r" ██     ",
-                    r" ███████",
-                    r"      ██",
-                    r" ███████",
+                    r" ███████ ",
+                    r" ██      ",
+                    r" ███████ ",
+                    r"      ██ ",
+                    r" ███████ ",
                 ],
             ),
             (
@@ -107,34 +119,34 @@ fn get_regular() -> (HashMap<char, Vec<&'static str>>, usize) {
             (
                 '7',
                 vec![
-                    r" ███████",
-                    r"      ██",
-                    r"     ██ ",
-                    r"    ██  ",
-                    r"    ██  ",
+                    r" ███████ ",
+                    r"      ██ ",
+                    r"     ██  ",
+                    r"    ██   ",
+                    r"    ██   ",
                 ],
             ),
             (
                 '8',
                 vec![
-                    r"  █████ ",
-                    r" ██   ██",
-                    r"  █████ ",
-                    r" ██   ██",
-                    r"  █████ ",
+                    r"  █████  ",
+                    r" ██   ██ ",
+                    r"  █████  ",
+                    r" ██   ██ ",
+                    r"  █████  ",
                 ],
             ),
             (
                 '9',
                 vec![
-                    r"  █████ ",
-                    r" ██   ██",
-                    r"  ██████",
-                    r"      ██",
-                    r"  █████ ",
+                    r"  █████  ",
+                    r" ██   ██ ",
+                    r"  ██████ ",
+                    r"      ██ ",
+                    r"  █████  ",
                 ],
             ),
-            (':', vec![r"   ", r" ██", r"   ", r" ██", r"   "]),
+            (':', vec![r"    ", r" ██ ", r"    ", r" ██ ", r"    "]),
         ]),
         5,
     )

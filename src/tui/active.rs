@@ -7,11 +7,11 @@ use std::{
 use chrono::{DateTime, Local};
 use crossterm::event::{KeyCode, KeyEvent};
 use termint::{
-    enums::Color,
+    enums::{Color, Wrap},
     geometry::Constraint,
     style::Style,
     term::Term,
-    widgets::{Layout, ProgressBar, Spacer},
+    widgets::{Element, Layout, ProgressBar, Spacer, ToSpan},
 };
 
 use crate::{
@@ -29,6 +29,7 @@ pub struct Active {
     reps: usize,
     pause_at: Option<Instant>,
     asci: AsciTimer,
+    dialog_opt: bool,
 }
 
 impl Active {
@@ -44,11 +45,49 @@ impl Active {
             reps: 0,
             pause_at: None,
             asci: AsciTimer::regular(),
+            dialog_opt: true,
         }
     }
 
     pub fn render(&self, term: &mut Term) -> Result<(), Error> {
+        let content = match self.interval {
+            IntervalType::Work => self.render_timer(),
+            IntervalType::Pending(rest) => self.render_pending(rest),
+            IntervalType::Rest => self.render_timer(),
+        };
+
+        let mut main = Layout::vertical();
+        main.push(Spacer::new(), Constraint::Fill(1));
+        main.push(content, 0..);
+        main.push(Spacer::new(), Constraint::Fill(1));
+        Ok(term.render(main)?)
+    }
+
+    pub fn update(&self, term: &mut Term) -> Result<(), Error> {
+        self.render(term)
+    }
+
+    pub fn on_key(
+        &mut self,
+        term: &mut Term,
+        event: KeyEvent,
+    ) -> Result<Option<Screen>, Error> {
         term.clear_cache();
+        match event.code {
+            KeyCode::Esc | KeyCode::Char('q') => Err(Error::Exit),
+            _ => match self.interval {
+                IntervalType::Work => self.listen_timer(event),
+                IntervalType::Pending(rest) => {
+                    self.listen_pending(term, event, rest)
+                }
+                IntervalType::Rest => self.listen_timer(event),
+            },
+        }
+    }
+}
+
+impl Active {
+    pub fn render_timer(&self) -> Element {
         let (time, width) = self.asci.element(self.format_remaining());
         let progress = self.progress();
         let pb = ProgressBar::new(Rc::new(Cell::new(progress)))
@@ -68,27 +107,91 @@ impl Active {
 
         let mut wrapper = Layout::horizontal().center();
         wrapper.push(content, width + 1);
-
-        let mut main = Layout::vertical();
-        main.push(Spacer::new(), Constraint::Fill(1));
-        main.push(wrapper, 0..);
-        main.push(Spacer::new(), Constraint::Fill(1));
-        Ok(term.render(main)?)
+        wrapper.into()
     }
 
-    pub fn update(&self, term: &mut Term) -> Result<(), Error> {
-        self.render(term)
+    pub fn render_pending(&self, rest: bool) -> Element {
+        let title = if rest { "Rest" } else { "Focus" };
+
+        let mut ops = Layout::horizontal();
+        let mut op1 =
+            format!("  {title}  ").wrap(Wrap::Letter).bg(Color::Gray);
+        let mut op2 = " Finish ".wrap(Wrap::Letter).bg(Color::Gray);
+        match self.dialog_opt {
+            true => op1 = op1.bg(Color::Cyan).fg(Color::Black),
+            false => op2 = op2.bg(Color::Cyan).fg(Color::Black),
+        }
+        ops.push(op1, 0..);
+        ops.push(Spacer::new(), 1);
+        ops.push(op2, 0..);
+
+        let mut content = Layout::vertical();
+        content.push(format!("Ready to {}?", title.to_lowercase()), 1..);
+        content.push(Spacer::new(), 1);
+        content.push(ops, 1);
+
+        let mut wrapper = Layout::horizontal().center();
+        wrapper.push(content, 0..);
+        wrapper.into()
     }
 
-    pub fn on_key(
+    fn listen_timer(
         &mut self,
-        _term: &mut Term,
         event: KeyEvent,
     ) -> Result<Option<Screen>, Error> {
         match event.code {
-            KeyCode::Esc | KeyCode::Char('q') => Err(Error::Exit),
+            KeyCode::Char(' ') => {
+                self.toggle_pause();
+                Ok(None)
+            }
             _ => Ok(None),
         }
+    }
+
+    fn listen_pending(
+        &mut self,
+        term: &mut Term,
+        event: KeyEvent,
+        rest: bool,
+    ) -> Result<Option<Screen>, Error> {
+        match event.code {
+            KeyCode::Left | KeyCode::Char('h') => self.dialog_opt = true,
+            KeyCode::Right | KeyCode::Char('l') => self.dialog_opt = false,
+            KeyCode::Enter if !self.dialog_opt => return Err(Error::Exit),
+            KeyCode::Enter if rest => self.start_rest(),
+            KeyCode::Enter => {
+                self.set_deadline(self.timer.work);
+                self.interval = IntervalType::Work;
+            }
+            _ => return Ok(None),
+        }
+        self.render(term)?;
+        Ok(None)
+    }
+
+    fn toggle_pause(&mut self) {
+        match self.pause_at {
+            Some(i) => {
+                self.set_deadline(self.deadline.saturating_duration_since(i));
+                self.pause_at = None;
+            }
+            None => self.pause_at = Some(Instant::now()),
+        }
+    }
+
+    fn start_rest(&mut self) {
+        let rest = match self.reps % self.timer.long_rate == 0 {
+            true => self.timer.long_rest,
+            false => self.timer.rest,
+        };
+        self.set_deadline(rest);
+        self.interval = IntervalType::Rest;
+    }
+
+    fn set_deadline(&mut self, rem: Duration) {
+        self.deadline = Instant::now() + rem;
+        self.wall_deadline =
+            Local::now() + chrono::Duration::from_std(rem).unwrap();
     }
 
     fn total(&self) -> Duration {

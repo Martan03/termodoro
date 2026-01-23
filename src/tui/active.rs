@@ -50,6 +50,7 @@ impl Active {
     }
 
     pub fn render(&self, term: &mut Term) -> Result<(), Error> {
+        term.clear_cache();
         let content = match self.interval {
             IntervalType::Work => self.render_timer(),
             IntervalType::Pending(rest) => self.render_pending(rest),
@@ -63,7 +64,12 @@ impl Active {
         Ok(term.render(main)?)
     }
 
-    pub fn update(&self, term: &mut Term) -> Result<(), Error> {
+    pub fn update(&mut self, term: &mut Term) -> Result<(), Error> {
+        if !self.interval.is_pending() && self.remaining().is_zero() {
+            let rest = self.interval == IntervalType::Work;
+            self.reps += rest as usize;
+            self.interval = IntervalType::Pending(rest);
+        }
         self.render(term)
     }
 
@@ -72,7 +78,6 @@ impl Active {
         term: &mut Term,
         event: KeyEvent,
     ) -> Result<Option<Screen>, Error> {
-        term.clear_cache();
         match event.code {
             KeyCode::Esc | KeyCode::Char('q') => Err(Error::Exit),
             _ => match self.interval {

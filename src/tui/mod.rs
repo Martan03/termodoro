@@ -12,6 +12,6 @@ pub enum IntervalType {
 
 impl IntervalType {
     pub fn is_pending(&self) -> bool {
-        matches!(self, IntervalType::Pending(_))
+        matches!(self, Self::Pending(_))
     }
 }

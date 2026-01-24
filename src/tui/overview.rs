@@ -2,10 +2,10 @@ use std::time::Duration;
 
 use crossterm::event::{KeyCode, KeyEvent};
 use termint::{
-    enums::{Color, Wrap},
+    enums::{Color, Modifier, Wrap},
     geometry::Constraint,
     term::Term,
-    widgets::{Element, Layout, Paragraph, Spacer, ToSpan},
+    widgets::{Block, Element, Layout, Paragraph, Spacer, ToSpan},
 };
 
 use crate::{error::Error, stat::Stat, tui::screen::Screen};
@@ -31,11 +31,19 @@ impl Overview {
             format_time(&self.stat.total_rest),
             format_time(&self.stat.overtime_rest)
         );
+        let total =
+            format!("Total time:    {}", format_time(&self.stat.total()));
 
         let mut content = Layout::vertical();
-        content.push("Session overview:", 0..);
+        let title = "Session overview:"
+            .modifier(Modifier::UNDERLINED)
+            .fg(Color::Cyan);
+        content.push(title, 0..);
+        content.push(Spacer::new(), 1);
         content.push(focus.wrap(Wrap::Letter), 1);
         content.push(rest, 1);
+        content.push(Block::empty(), 1);
+        content.push(total.wrap(Wrap::Letter), 1);
 
         let mut wrapper = Layout::horizontal().center();
         wrapper.push(content, 0..);

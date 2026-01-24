@@ -16,6 +16,7 @@ use termint::{
 
 use crate::{
     error::Error,
+    stat::Stat,
     timer::Timer,
     tui::{IntervalType, screen::Screen, widgets::asci_timer::AsciTimer},
 };
@@ -30,6 +31,8 @@ pub struct Active {
     pause_at: Option<Instant>,
     asci: AsciTimer,
     dialog_opt: bool,
+    focus_overtime: Duration,
+    rest_overtime: Duration,
 }
 
 impl Active {
@@ -46,6 +49,8 @@ impl Active {
             pause_at: None,
             asci: AsciTimer::regular(),
             dialog_opt: true,
+            focus_overtime: Duration::ZERO,
+            rest_overtime: Duration::ZERO,
         }
     }
 
@@ -173,9 +178,19 @@ impl Active {
         match event.code {
             KeyCode::Left | KeyCode::Char('h') => self.dialog_opt = true,
             KeyCode::Right | KeyCode::Char('l') => self.dialog_opt = false,
-            KeyCode::Enter if !self.dialog_opt => return Err(Error::Exit),
-            KeyCode::Enter if rest => self.start_rest(),
+            KeyCode::Enter if !self.dialog_opt => {
+                match rest {
+                    true => self.focus_overtime += self.overtime(),
+                    false => self.rest_overtime += self.overtime(),
+                }
+                return Ok(Some(Screen::overview(self.finish_session(rest))));
+            }
+            KeyCode::Enter if rest => {
+                self.focus_overtime += self.overtime();
+                self.start_rest();
+            }
             KeyCode::Enter => {
+                self.rest_overtime += self.overtime();
                 self.set_deadline(self.timer.work);
                 self.interval = IntervalType::Work;
             }
@@ -202,6 +217,15 @@ impl Active {
         };
         self.set_deadline(rest);
         self.interval = IntervalType::Rest;
+    }
+
+    fn finish_session(&self, rest_next: bool) -> Stat {
+        let focus = self.timer.work * self.reps as u32;
+        let rests = self.reps.saturating_sub(rest_next as usize);
+        let lr = (rests / self.timer.long_rate) as u32;
+        let sr = rests as u32 - lr;
+        let rest = lr * self.timer.long_rest + sr * self.timer.rest;
+        Stat::new(focus, self.focus_overtime, rest, self.rest_overtime)
     }
 
     fn set_deadline(&mut self, rem: Duration) {

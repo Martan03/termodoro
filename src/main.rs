@@ -17,6 +17,7 @@ use crate::{
 pub mod app;
 pub mod args;
 pub mod error;
+pub mod stat;
 pub mod timer;
 pub mod tui;
 

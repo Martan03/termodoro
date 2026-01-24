@@ -11,7 +11,7 @@ use termint::{
     geometry::Constraint,
     style::Style,
     term::Term,
-    widgets::{Element, Layout, ProgressBar, Spacer, ToSpan},
+    widgets::{Element, Layout, Paragraph, ProgressBar, Spacer, ToSpan},
 };
 
 use crate::{
@@ -51,16 +51,19 @@ impl Active {
 
     pub fn render(&self, term: &mut Term) -> Result<(), Error> {
         term.clear_cache();
-        let content = match self.interval {
-            IntervalType::Work => self.render_timer(),
-            IntervalType::Pending(rest) => self.render_pending(rest),
-            IntervalType::Rest => self.render_timer(),
+        let (content, help) = match self.interval {
+            IntervalType::Work => (self.render_timer(), self.timer_help()),
+            IntervalType::Pending(rest) => {
+                (self.render_pending(rest), self.pending_help())
+            }
+            IntervalType::Rest => (self.render_timer(), self.timer_help()),
         };
 
         let mut main = Layout::vertical();
         main.push(Spacer::new(), Constraint::Fill(1));
         main.push(content, 0..);
         main.push(Spacer::new(), Constraint::Fill(1));
+        main.push(help, 1..);
         Ok(term.render(main)?)
     }
 
@@ -228,5 +231,25 @@ impl Active {
 
     fn format_deadline(&self) -> String {
         self.wall_deadline.format("%H:%M").to_string()
+    }
+
+    fn timer_help(&self) -> Element {
+        Paragraph::new(vec![
+            "[Space]Resume/pause".fg(Color::Gray).into(),
+            "[Esc|q]Quit".fg(Color::Gray).into(),
+        ])
+        .separator(" ")
+        .into()
+    }
+
+    fn pending_help(&self) -> Element {
+        Paragraph::new(vec![
+            "[←|h]Prev. sel.".fg(Color::Gray).into(),
+            "[→|l]Next sel.".fg(Color::Gray).into(),
+            "[Enter]Select".fg(Color::Gray).into(),
+            "[Esc|q]Quit".fg(Color::Gray).into(),
+        ])
+        .separator(" ")
+        .into()
     }
 }

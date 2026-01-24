@@ -6,9 +6,7 @@ use termint::{
     geometry::Constraint,
     style::Style,
     term::Term,
-    widgets::{
-        Element, Layout, List, ListState, Paragraph, Spacer, ToSpan,
-    },
+    widgets::{Element, Layout, List, ListState, Paragraph, Spacer, ToSpan},
 };
 
 use crate::{error::Error, timer::Timer, tui::screen::Screen};
@@ -20,7 +18,7 @@ pub struct Selector {
 
 impl Selector {
     pub fn render(&self, term: &mut Term) -> Result<(), Error> {
-        let items = vec!["50/10 (30@4)", "25/5 (15@4)"];
+        let items = vec!["25/5 (15@4)", "50/10 (30@4)"];
         let list = List::new(items, self.state.clone())
             .auto_scroll()
             .highlight_symbol("> ")
@@ -62,6 +60,7 @@ impl Selector {
         Paragraph::new(vec![
             "[↑|k]Prev. sel.".fg(Color::Gray).into(),
             "[↓|j]Next sel.".fg(Color::Gray).into(),
+            "[Enter]Select".fg(Color::Gray).into(),
             "[Esc|q]Quit".fg(Color::Gray).into(),
         ])
         .separator(" ")
@@ -74,8 +73,8 @@ impl Selector {
             return None;
         };
         match sel {
-            0 => Some(Screen::timer(Timer::new(Duration::from_mins(50)))),
-            1 => Some(Screen::timer(Timer::new(Duration::from_mins(25)))),
+            0 => Some(Screen::timer(Timer::new(Duration::from_mins(25)))),
+            1 => Some(Screen::timer(Timer::new(Duration::from_mins(50)))),
             _ => None,
         }
     }

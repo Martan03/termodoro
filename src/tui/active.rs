@@ -96,7 +96,8 @@ impl Active {
 
 impl Active {
     pub fn render_timer(&self) -> Element {
-        let (time, width) = self.asci.element(self.format_remaining());
+        let rem = Self::format_duration(&self.remaining());
+        let (time, width) = self.asci.element(rem);
         let progress = self.progress();
         let pb = ProgressBar::new(Rc::new(Cell::new(progress)))
             .style(Style::new().bg(Color::Gray))
@@ -121,6 +122,12 @@ impl Active {
     pub fn render_pending(&self, rest: bool) -> Element {
         let title = if rest { "Rest" } else { "Focus" };
 
+        let overtime = self.overtime();
+        let overtime_text = match overtime.is_zero() {
+            true => String::new(),
+            false => format!("+{}", Self::format_duration(&overtime)),
+        };
+
         let mut ops = Layout::horizontal();
         let mut op1 =
             format!("  {title}  ").wrap(Wrap::Letter).bg(Color::Gray);
@@ -134,6 +141,7 @@ impl Active {
         ops.push(op2, 0..);
 
         let mut content = Layout::vertical();
+        content.push(overtime_text.fg(Color::Gray), 1..);
         content.push(format!("Ready to {}?", title.to_lowercase()), 1..);
         content.push(Spacer::new(), 1);
         content.push(ops, 1);
@@ -219,13 +227,19 @@ impl Active {
         }
     }
 
+    fn overtime(&self) -> Duration {
+        Instant::now()
+            .saturating_duration_since(self.deadline)
+            .saturating_sub(Duration::from_secs(5))
+    }
+
     fn progress(&self) -> f64 {
         (1. - (self.remaining().as_secs_f64() / self.total().as_secs_f64()))
             * 100.
     }
 
-    fn format_remaining(&self) -> String {
-        let secs = self.remaining().as_secs();
+    fn format_duration(dur: &Duration) -> String {
+        let secs = dur.as_secs();
         format!("{:02}:{:02}", secs / 60, secs % 60)
     }
 

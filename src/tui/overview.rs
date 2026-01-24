@@ -31,7 +31,6 @@ impl Overview {
             format_time(&self.stat.total_rest),
             format_time(&self.stat.overtime_rest)
         );
-        let width = focus.len().max(rest.len());
 
         let mut content = Layout::vertical();
         content.push("Session overview:", 0..);
@@ -39,7 +38,7 @@ impl Overview {
         content.push(rest, 1);
 
         let mut wrapper = Layout::horizontal().center();
-        wrapper.push(content, width);
+        wrapper.push(content, 0..);
 
         let mut main = Layout::vertical();
         main.push(Spacer::new(), Constraint::Fill(1));

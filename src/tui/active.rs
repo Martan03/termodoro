@@ -183,6 +183,7 @@ impl Active {
                     true => self.focus_overtime += self.overtime(),
                     false => self.rest_overtime += self.overtime(),
                 }
+                term.clear_cache();
                 return Ok(Some(Screen::overview(self.finish_session(rest))));
             }
             KeyCode::Enter if rest => {

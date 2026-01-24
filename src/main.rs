@@ -36,7 +36,7 @@ fn run() -> Result<(), Error> {
     let args = Args::parse(Pareg::args())?;
     match args.action {
         Action::App(args) => run_app(args)?,
-        Action::Help => println!("help wip"),
+        Action::Help => Args::help(),
     }
 
     Ok(())

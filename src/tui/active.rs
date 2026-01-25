@@ -17,12 +17,13 @@ use termint::{
 use crate::{
     config::Config,
     error::Error,
+    player::Player,
     stat::Stat,
     timer::Timer,
     tui::{IntervalType, screen::Screen, widgets::asci_timer::AsciTimer},
 };
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug)]
 pub struct Active {
     timer: Timer,
     deadline: Instant,
@@ -34,6 +35,7 @@ pub struct Active {
     dialog_opt: bool,
     focus_overtime: Duration,
     rest_overtime: Duration,
+    player: Player,
 }
 
 impl Active {
@@ -52,6 +54,7 @@ impl Active {
             dialog_opt: true,
             focus_overtime: Duration::ZERO,
             rest_overtime: Duration::ZERO,
+            player: Player::new(),
         }
     }
 
@@ -82,6 +85,7 @@ impl Active {
             let rest = self.interval == IntervalType::Work;
             self.reps += rest as usize;
             self.interval = IntervalType::Pending(rest);
+            self.play_sound(conf, rest)?;
         }
         self.render(term)
     }
@@ -223,6 +227,17 @@ impl Active {
         };
         self.set_deadline(rest);
         self.interval = IntervalType::Rest;
+    }
+
+    fn play_sound(&mut self, conf: &Config, rest: bool) -> Result<(), Error> {
+        let path = match rest {
+            true => &conf.focus_end_sound,
+            false => &conf.rest_end_sound,
+        };
+        if let Some(path) = path {
+            self.player.play(path)?;
+        }
+        Ok(())
     }
 
     fn finish_session(&self, rest_next: bool) -> Stat {

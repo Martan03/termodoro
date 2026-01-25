@@ -8,6 +8,8 @@ pub enum Error {
     Pareg(#[from] pareg::ArgError),
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+    #[error(transparent)]
+    Raplay(#[from] raplay::Error),
     #[error("{0}")]
     Msg(String),
     #[error("exit")]

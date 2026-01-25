@@ -9,7 +9,7 @@ use crate::{
     tui::{active::Active, overview::Overview, selector::Selector},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Screen {
     Selector(Selector),
     Timer(Active),

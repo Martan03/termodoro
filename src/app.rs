@@ -9,11 +9,12 @@ use crossterm::{
 };
 use termint::term::Term;
 
-use crate::{error::Error, timer::Timer, tui::screen::Screen};
+use crate::{config::Config, error::Error, timer::Timer, tui::screen::Screen};
 
 #[derive(Debug)]
 pub struct App {
     pub screen: Screen,
+    pub config: Config,
     pub term: Term,
 }
 
@@ -27,6 +28,7 @@ impl App {
         };
         Self {
             screen,
+            config: Config::from_default_json(),
             term: Term::new(),
         }
     }
@@ -58,7 +60,7 @@ impl App {
                 self.event()?;
             }
 
-            self.screen.update(&mut self.term)?;
+            self.screen.update(&mut self.term, &self.config)?;
         }
     }
 

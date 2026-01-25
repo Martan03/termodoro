@@ -4,6 +4,7 @@ use crate::args::app::AppArgs;
 #[derive(Debug, Clone, PartialEq)]
 pub enum Action {
     App(AppArgs),
+    Config,
     Help,
 }
 

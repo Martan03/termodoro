@@ -2,6 +2,7 @@ use crossterm::event::KeyEvent;
 use termint::term::Term;
 
 use crate::{
+    config::Config,
     error::Error,
     stat::Stat,
     timer::Timer,
@@ -36,10 +37,14 @@ impl Screen {
         }
     }
 
-    pub fn update(&mut self, term: &mut Term) -> Result<(), Error> {
+    pub fn update(
+        &mut self,
+        term: &mut Term,
+        conf: &Config,
+    ) -> Result<(), Error> {
         match self {
             Self::Selector(_) => Ok(()),
-            Self::Timer(active) => active.update(term),
+            Self::Timer(active) => active.update(term, conf),
             Self::Overview(_) => Ok(()),
         }
     }

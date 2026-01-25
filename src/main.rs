@@ -1,7 +1,8 @@
 use std::{
+    fs::create_dir_all,
     io::{Write, stdout},
     panic::{set_hook, take_hook},
-    process::ExitCode,
+    process::{Command, ExitCode},
 };
 
 use crossterm::terminal::{disable_raw_mode, is_raw_mode_enabled};
@@ -11,11 +12,13 @@ use termint::termal::eprintcln;
 use crate::{
     app::App,
     args::{action::Action, app::AppArgs, args_struct::Args},
+    config::Config,
     error::Error,
 };
 
 pub mod app;
 pub mod args;
+pub mod config;
 pub mod error;
 pub mod stat;
 pub mod timer;
@@ -37,6 +40,7 @@ fn run() -> Result<(), Error> {
     let args = Args::parse(Pareg::args())?;
     match args.action {
         Action::App(args) => run_app(args)?,
+        Action::Config => config()?,
         Action::Help => Args::help(),
     }
 
@@ -47,6 +51,18 @@ fn run_app(args: AppArgs) -> Result<(), Error> {
     let timer = args.export();
     let mut app = App::new(timer);
     app.run()
+}
+
+fn config() -> Result<(), Error> {
+    let editor = std::env::var("EDITOR").unwrap_or("vi".to_string());
+    create_dir_all(Config::dir())?;
+    let file = Config::file();
+    if !file.exists() {
+        Config::default().to_default_json()?;
+    }
+
+    Command::new(editor).arg(file).spawn()?.wait()?;
+    Ok(())
 }
 
 fn register_panic_hook() {

@@ -30,6 +30,7 @@ impl Args {
             Some("-h") | Some("--help") | Some("help") => {
                 parsed.action = Action::Help
             }
+            Some("config") => parsed.action = Action::Config,
             None => {}
             _ => parsed.parse_app(&mut args)?,
         }

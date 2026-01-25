@@ -15,6 +15,7 @@ use termint::{
 };
 
 use crate::{
+    config::Config,
     error::Error,
     stat::Stat,
     timer::Timer,
@@ -72,7 +73,11 @@ impl Active {
         Ok(term.render(main)?)
     }
 
-    pub fn update(&mut self, term: &mut Term) -> Result<(), Error> {
+    pub fn update(
+        &mut self,
+        term: &mut Term,
+        conf: &Config,
+    ) -> Result<(), Error> {
         if !self.interval.is_pending() && self.remaining().is_zero() {
             let rest = self.interval == IntervalType::Work;
             self.reps += rest as usize;

@@ -2,6 +2,8 @@
 
 Pomodoro TUI implementation in Rust 🦀
 
+![termodoro showcase](assets/termodoro.gif)
+
 ## Table of Contents
 
 {{ mdcon }}

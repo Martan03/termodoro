@@ -41,12 +41,12 @@ impl Args {
         let mut app = AppArgs::default();
         while let Some(arg) = args.next() {
             match arg {
-                "-w" | "--work" => app.work = Some(Self::read_dur(args)?),
+                "-f" | "--focus" => app.work = Some(Self::read_dur(args)?),
                 "-r" | "--rest" => app.rest = Some(Self::read_dur(args)?),
                 "-l" | "--long-rest" => {
                     app.long_rest = Some(Self::read_dur(args)?)
                 }
-                "-i" | "--intervals" => app.long_rate = Some(args.next_arg()?),
+                "-c" | "--cycle" => app.long_rate = Some(args.next_arg()?),
                 _ => {
                     return Err(
                         format!("invalid app argument: {}", arg).into()
@@ -80,8 +80,8 @@ Pomodoro TUI implementation written in Rust.
   {'y}-h  --help{'_}
     Displays this help.
 
-  {'y}-w  --work{'_}
-    Sets the work timer length.
+  {'y}-f  --focus{'_}
+    Sets the focus timer length.
 
   {'y}-r  --rest{'_}
     Sets the rest timer length.
@@ -89,8 +89,8 @@ Pomodoro TUI implementation written in Rust.
   {'y}-l  --long-rest{'_}
     Sets the long rest timer length.
 
-  {'y}-i  --intervals{'_}
-    Sets after how many work intervals long rest happens.",
+  {'y}-c  --cycles{'_}
+    Sets after how many cycles the long rest happens.",
             termal::gradient("Martan03", (0, 220, 255), (175, 80, 255)),
             Self::VERSION_NUMBER
         );

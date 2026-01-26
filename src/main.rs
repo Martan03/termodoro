@@ -18,9 +18,9 @@ use crate::{
 
 pub mod app;
 pub mod args;
+pub mod audio;
 pub mod config;
 pub mod error;
-pub mod player;
 pub mod stat;
 pub mod timer;
 pub mod tui;

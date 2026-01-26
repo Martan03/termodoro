@@ -14,3 +14,8 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 termint = "0.6.1"
 thiserror = "2.0.17"
+
+[features]
+default = ["default-sounds"]
+
+default-sounds = []

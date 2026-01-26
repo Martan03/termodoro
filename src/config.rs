@@ -6,14 +6,14 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::Error;
+use crate::{audio::source::AudioSource, error::Error};
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Config {
     #[serde(default)]
-    pub focus_end_sound: Option<PathBuf>,
+    pub focus_end_sound: AudioSource,
     #[serde(default)]
-    pub rest_end_sound: Option<PathBuf>,
+    pub rest_end_sound: AudioSource,
 }
 
 impl Config {

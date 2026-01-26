@@ -15,9 +15,9 @@ use termint::{
 };
 
 use crate::{
+    audio::player::Player,
     config::Config,
     error::Error,
-    player::Player,
     stat::Stat,
     timer::Timer,
     tui::{IntervalType, screen::Screen, widgets::asci_timer::AsciTimer},
@@ -230,14 +230,11 @@ impl Active {
     }
 
     fn play_sound(&mut self, conf: &Config, rest: bool) -> Result<(), Error> {
-        let path = match rest {
+        let source = match rest {
             true => &conf.focus_end_sound,
             false => &conf.rest_end_sound,
         };
-        if let Some(path) = path {
-            self.player.play(path)?;
-        }
-        Ok(())
+        source.play(&mut self.player, rest)
     }
 
     fn finish_session(&self, rest_next: bool) -> Stat {

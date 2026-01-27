@@ -6,7 +6,16 @@ Pomodoro TUI implementation in Rust 🦀
 
 ## Table of Contents
 
-{{ mdcon }}
+- [Installation](#installation)
+- [Usage](#usage)
+- [Config](#config)
+- [The science of focus](#the-science-of-focus)
+    - [The brain's natural pulse](#the-brains-natural-pulse)
+    - [Basic Rest-Activity Cycle](#basic-rest-activity-cycle)
+    - [Why pomodoro fits?](#why-pomodoro-fits)
+    - [Psychological aspect](#psychological-aspect)
+    - [Conclusion](#conclusion)
+- [Links](#links)
 
 ## Installation
 
@@ -33,7 +42,27 @@ If you want to skip the need for picking the interval or you want a custom one,
 you can run:
 
 ```bash
-./termodoro -w <focus_time> -r <rest_time> -l <long_rest_time> -i <long_rest_rate>
+./termodoro -f <focus_time> -r <rest_time> -l <long_rest_time> -c <long_rest_rate>
+```
+
+## Config
+
+The default features include default sounds as well. When a focus or rest
+timer ends, it plays the default sound. You can configure this in
+`config.json`. To open config, you can run:
+
+```bash
+./termodoro config
+```
+
+You can then set custom sound or disable it like this:
+```json
+{
+    "focus_end_sound": {
+        "Custom": "/path/to/sound.mp3"
+    },
+    "rest_end_sound": "None"
+}
 ```
 
 ## The science of focus

@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
-use termint::{
-    enums::Wrap,
-    widgets::{Element, Grad},
-};
+use termint::{enums::Wrap, widgets::Grad};
+
+use crate::tui::Element;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AsciTimer {

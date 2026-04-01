@@ -1,15 +1,12 @@
-use std::{
-    io::{Write, stdout},
-    time::Duration,
+use std::time::Duration;
+
+use termint::{
+    prelude::Event,
+    term::{Action, Application, Frame, Term},
+    widgets::Element,
 };
 
-use crossterm::{
-    event::{Event, KeyEvent, poll},
-    terminal::{disable_raw_mode, enable_raw_mode},
-};
-use termint::term::Term;
-
-use crate::{config::Config, error::Error, timer::Timer, tui::screen::Screen};
+use crate::{config::Config, timer::Timer, tui::screen::Screen};
 
 #[derive(Debug)]
 pub struct App {
@@ -32,55 +29,59 @@ impl App {
             term: Term::new(),
         }
     }
+}
 
-    /// Runs the app - does prep. work before main loop and then clean up
-    pub fn run(&mut self) -> Result<(), Error> {
-        enable_raw_mode()?;
-        // Swaps print buffer, clears screen and hides cursor
-        print!("\x1b[?1049h\x1b[2J\x1b[?25l");
-        _ = stdout().flush();
+impl Application for App {
+    type Message = crate::message::Message;
 
-        let res = self.main_loop();
-
-        // Restores screen
-        print!("\x1b[?1049l\x1b[?25h");
-        _ = stdout().flush();
-        disable_raw_mode()?;
-
-        match res {
-            Err(Error::Exit) => Ok(()),
-            _ => res,
+    fn view(&self, _frame: &Frame) -> Element<Self::Message> {
+        match &self.screen {
+            Screen::Selector(selector) => selector.view(),
+            Screen::Timer(active) => active.view(),
+            Screen::Overview(overview) => overview.view(),
         }
     }
 
-    fn main_loop(&mut self) -> Result<(), Error> {
-        self.render()?;
-        loop {
-            if poll(Duration::from_millis(100))? {
-                self.event()?;
-            }
+    fn event(&mut self, event: Event) -> Action {
+        let Event::Key(key) = event else {
+            return Action::NONE;
+        };
 
-            self.screen.update(&mut self.term, &self.config)?;
-        }
-    }
+        let res = match &mut self.screen {
+            Screen::Selector(selector) => selector.on_key(key),
+            Screen::Timer(active) => active.on_key(key),
+            Screen::Overview(overview) => overview.on_key(key),
+        };
 
-    fn render(&mut self) -> Result<(), Error> {
-        self.screen.render(&mut self.term)
-    }
+        // TODO: log the error
+        let Ok((mut action, screen)) = res else {
+            return Action::NONE;
+        };
 
-    fn event(&mut self) -> Result<(), Error> {
-        match crossterm::event::read()? {
-            Event::Key(e) => self.key_handler(e),
-            Event::Resize(_, _) => self.render(),
-            _ => Ok(()),
-        }
-    }
-
-    fn key_handler(&mut self, event: KeyEvent) -> Result<(), Error> {
-        if let Some(screen) = self.screen.on_key(&mut self.term, event)? {
+        if let Some(screen) = screen {
             self.screen = screen;
-            self.render()?;
+            action = Action::RENDER;
         }
-        Ok(())
+        action
+    }
+
+    fn message(&mut self, message: Self::Message) -> Action {
+        let (mut action, screen) = match &mut self.screen {
+            Screen::Selector(selector) => selector.message(message),
+            Screen::Timer(active) => active.message(message),
+            Screen::Overview(_) => return Action::NONE,
+        };
+        if let Some(screen) = screen {
+            self.screen = screen;
+            action = Action::RENDER;
+        }
+        action
+    }
+
+    fn update(&mut self, _delta: Duration) -> Action {
+        match &mut self.screen {
+            Screen::Timer(active) => active.update(&self.config),
+            _ => Action::NONE,
+        }
     }
 }

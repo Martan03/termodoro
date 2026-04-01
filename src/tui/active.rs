@@ -5,22 +5,25 @@ use std::{
 };
 
 use chrono::{DateTime, Local};
-use crossterm::event::{KeyCode, KeyEvent};
 use termint::{
     enums::{Color, Wrap},
     geometry::Constraint,
+    prelude::{KeyCode, KeyEvent},
     style::Style,
-    term::Term,
-    widgets::{Element, Layout, Paragraph, ProgressBar, Spacer, ToSpan},
+    term::Action,
+    widgets::{Button, Layout, Paragraph, ProgressBar, Spacer, ToSpan},
 };
 
 use crate::{
     audio::player::Player,
     config::Config,
     error::Error,
+    message::Message,
     stat::Stat,
     timer::Timer,
-    tui::{IntervalType, screen::Screen, widgets::asci_timer::AsciTimer},
+    tui::{
+        Element, IntervalType, screen::Screen, widgets::asci_timer::AsciTimer,
+    },
 };
 
 #[derive(Debug)]
@@ -58,8 +61,7 @@ impl Active {
         }
     }
 
-    pub fn render(&self, term: &mut Term) -> Result<(), Error> {
-        term.clear_cache();
+    pub fn view(&self) -> Element {
         let (content, help) = match self.interval {
             IntervalType::Work => (self.render_timer(), self.timer_help()),
             IntervalType::Pending(rest) => {
@@ -73,38 +75,58 @@ impl Active {
         main.push(content, 0..);
         main.push(Spacer::new(), Constraint::Fill(1));
         main.push(help, 1..);
-        Ok(term.render(main)?)
+        main.into()
     }
 
-    pub fn update(
-        &mut self,
-        term: &mut Term,
-        conf: &Config,
-    ) -> Result<(), Error> {
+    pub fn update(&mut self, conf: &Config) -> Action {
         if !self.interval.is_pending() && self.remaining().is_zero() {
             let rest = self.interval == IntervalType::Work;
             self.reps += rest as usize;
             self.interval = IntervalType::Pending(rest);
-            self.play_sound(conf, rest)?;
+            // TODO: log the error
+            _ = self.play_sound(conf, rest);
         }
-        self.render(term)
+        Action::RENDER
     }
 
     pub fn on_key(
         &mut self,
-        term: &mut Term,
         event: KeyEvent,
-    ) -> Result<Option<Screen>, Error> {
+    ) -> Result<(Action, Option<Screen>), Error> {
         match event.code {
-            KeyCode::Esc | KeyCode::Char('q') => Err(Error::Exit),
+            KeyCode::Esc | KeyCode::Char('q') => Ok((Action::QUIT, None)),
             _ => match self.interval {
                 IntervalType::Work => self.listen_timer(event),
                 IntervalType::Pending(rest) => {
-                    self.listen_pending(term, event, rest)
+                    self.listen_pending(event, rest)
                 }
                 IntervalType::Rest => self.listen_timer(event),
             },
         }
+    }
+
+    pub fn message(&mut self, message: Message) -> (Action, Option<Screen>) {
+        let IntervalType::Pending(rest) = &self.interval else {
+            return (Action::NONE, None);
+        };
+
+        let rest = *rest;
+        match message {
+            Message::Continue if rest => self.start_rest(),
+            Message::Continue => {
+                self.rest_overtime += self.overtime();
+                self.set_deadline(self.timer.work);
+                self.interval = IntervalType::Work;
+            }
+            Message::Finish => {
+                return (
+                    Action::RENDER,
+                    Some(Screen::overview(self.finish_session(rest))),
+                );
+            }
+            _ => return (Action::NONE, None),
+        }
+        (Action::RENDER, None)
     }
 }
 
@@ -118,11 +140,11 @@ impl Active {
             .thumb_chars(['█']);
 
         let mut pb_label = Layout::horizontal();
-        pb_label.push(format!("{}%", progress as usize), 2..);
+        pb_label.push(format!("{}%", (progress * 100.) as usize), 2..);
         pb_label.push(Spacer::new(), Constraint::Fill(1));
         pb_label.push(self.format_deadline(), 0..);
 
-        let mut content = Layout::vertical();
+        let mut content = Layout::<Message>::vertical();
         content.push(time, self.asci.height);
         content.push(Spacer::new(), 1);
         content.push(pb, 1);
@@ -150,9 +172,9 @@ impl Active {
             true => op1 = op1.bg(Color::Cyan).fg(Color::Black),
             false => op2 = op2.bg(Color::Cyan).fg(Color::Black),
         }
-        ops.push(op1, 0..);
+        ops.push(Button::new(op1).on_click(Message::Continue), 0..);
         ops.push(Spacer::new(), 1);
-        ops.push(op2, 0..);
+        ops.push(Button::new(op2).on_click(Message::Finish), 0..);
 
         let mut content = Layout::vertical();
         content.push(overtime_text.fg(Color::Gray), 1..);
@@ -168,46 +190,53 @@ impl Active {
     fn listen_timer(
         &mut self,
         event: KeyEvent,
-    ) -> Result<Option<Screen>, Error> {
+    ) -> Result<(Action, Option<Screen>), Error> {
         match event.code {
             KeyCode::Char(' ') => {
                 self.toggle_pause();
-                Ok(None)
+                Ok((Action::NONE, None))
             }
-            _ => Ok(None),
+            _ => Ok((Action::NONE, None)),
         }
     }
 
     fn listen_pending(
         &mut self,
-        term: &mut Term,
         event: KeyEvent,
         rest: bool,
-    ) -> Result<Option<Screen>, Error> {
+    ) -> Result<(Action, Option<Screen>), Error> {
         match event.code {
             KeyCode::Left | KeyCode::Char('h') => self.dialog_opt = true,
             KeyCode::Right | KeyCode::Char('l') => self.dialog_opt = false,
             KeyCode::Enter if !self.dialog_opt => {
-                match rest {
-                    true => self.focus_overtime += self.overtime(),
-                    false => self.rest_overtime += self.overtime(),
-                }
-                term.clear_cache();
-                return Ok(Some(Screen::overview(self.finish_session(rest))));
+                return Ok((
+                    Action::RENDER,
+                    Some(Screen::overview(self.finish_session(rest))),
+                ));
             }
-            KeyCode::Enter if rest => {
-                self.focus_overtime += self.overtime();
-                self.start_rest();
-            }
+            KeyCode::Enter if rest => self.start_rest(),
             KeyCode::Enter => {
                 self.rest_overtime += self.overtime();
                 self.set_deadline(self.timer.work);
                 self.interval = IntervalType::Work;
             }
-            _ => return Ok(None),
+            _ => return Ok((Action::NONE, None)),
         }
-        self.render(term)?;
-        Ok(None)
+        Ok((Action::RENDER, None))
+    }
+
+    fn finish_session(&mut self, rest: bool) -> Stat {
+        match rest {
+            true => self.focus_overtime += self.overtime(),
+            false => self.rest_overtime += self.overtime(),
+        }
+
+        let focus = self.timer.work * self.reps as u32;
+        let rests = self.reps.saturating_sub(rest as usize);
+        let lr = (rests / self.timer.long_rate) as u32;
+        let sr = rests as u32 - lr;
+        let rt = lr * self.timer.long_rest + sr * self.timer.rest;
+        Stat::new(focus, self.focus_overtime, rt, self.rest_overtime)
     }
 
     fn toggle_pause(&mut self) {
@@ -221,6 +250,7 @@ impl Active {
     }
 
     fn start_rest(&mut self) {
+        self.focus_overtime += self.overtime();
         let rest = match self.reps % self.timer.long_rate == 0 {
             true => self.timer.long_rest,
             false => self.timer.rest,
@@ -235,15 +265,6 @@ impl Active {
             false => &conf.rest_end_sound,
         };
         source.play(&mut self.player, rest)
-    }
-
-    fn finish_session(&self, rest_next: bool) -> Stat {
-        let focus = self.timer.work * self.reps as u32;
-        let rests = self.reps.saturating_sub(rest_next as usize);
-        let lr = (rests / self.timer.long_rate) as u32;
-        let sr = rests as u32 - lr;
-        let rest = lr * self.timer.long_rest + sr * self.timer.rest;
-        Stat::new(focus, self.focus_overtime, rest, self.rest_overtime)
     }
 
     fn set_deadline(&mut self, rem: Duration) {
@@ -276,8 +297,7 @@ impl Active {
     }
 
     fn progress(&self) -> f64 {
-        (1. - (self.remaining().as_secs_f64() / self.total().as_secs_f64()))
-            * 100.
+        1. - (self.remaining().as_secs_f64() / self.total().as_secs_f64())
     }
 
     fn format_duration(dur: &Duration) -> String {
@@ -291,8 +311,8 @@ impl Active {
 
     fn timer_help(&self) -> Element {
         Paragraph::new(vec![
-            "[Space]Resume/pause".fg(Color::Gray).into(),
-            "[Esc|q]Quit".fg(Color::Gray).into(),
+            "[Space]Resume/pause".fg(Color::Gray),
+            "[Esc|q]Quit".fg(Color::Gray),
         ])
         .separator(" ")
         .into()
@@ -300,10 +320,10 @@ impl Active {
 
     fn pending_help(&self) -> Element {
         Paragraph::new(vec![
-            "[←|h]Prev. sel.".fg(Color::Gray).into(),
-            "[→|l]Next sel.".fg(Color::Gray).into(),
-            "[Enter]Select".fg(Color::Gray).into(),
-            "[Esc|q]Quit".fg(Color::Gray).into(),
+            "[←|h]Prev. sel.".fg(Color::Gray),
+            "[→|l]Next sel.".fg(Color::Gray),
+            "[Enter]Select".fg(Color::Gray),
+            "[Esc|q]Quit".fg(Color::Gray),
         ])
         .separator(" ")
         .into()

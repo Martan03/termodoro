@@ -1,14 +1,18 @@
 use std::time::Duration;
 
-use crossterm::event::{KeyCode, KeyEvent};
 use termint::{
     enums::{Color, Modifier, Wrap},
     geometry::Constraint,
-    term::Term,
-    widgets::{Block, Element, Layout, Paragraph, Spacer, ToSpan},
+    prelude::{KeyCode, KeyEvent},
+    term::Action,
+    widgets::{Block, Layout, Paragraph, Spacer, ToSpan},
 };
 
-use crate::{error::Error, stat::Stat, tui::screen::Screen};
+use crate::{
+    error::Error,
+    stat::Stat,
+    tui::{Element, screen::Screen},
+};
 
 #[derive(Debug, Clone)]
 pub struct Overview {
@@ -20,7 +24,7 @@ impl Overview {
         Self { stat }
     }
 
-    pub fn render(&self, term: &mut Term) -> Result<(), Error> {
+    pub fn view(&self) -> Element {
         let focus = format!(
             "Focus time:    {} (+{} flow overtime)",
             format_time(&self.stat.total_focus),
@@ -53,22 +57,21 @@ impl Overview {
         main.push(wrapper, 0..);
         main.push(Spacer::new(), Constraint::Fill(1));
         main.push(self.help(), 1..);
-        Ok(term.render(main)?)
+        main.into()
     }
 
     pub fn on_key(
         &mut self,
-        _term: &mut Term,
         event: KeyEvent,
-    ) -> Result<Option<Screen>, Error> {
+    ) -> Result<(Action, Option<Screen>), Error> {
         match event.code {
-            KeyCode::Esc | KeyCode::Char('q') => Err(Error::Exit),
-            _ => Ok(None),
+            KeyCode::Esc | KeyCode::Char('q') => Ok((Action::QUIT, None)),
+            _ => Ok((Action::NONE, None)),
         }
     }
 
     fn help(&self) -> Element {
-        Paragraph::new(vec!["[Esc|q]Quit".fg(Color::Gray).into()])
+        Paragraph::new(vec!["[Esc|q]Quit".fg(Color::Gray)])
             .separator(" ")
             .into()
     }

@@ -9,6 +9,8 @@ pub enum Error {
     #[error(transparent)]
     Json(#[from] serde_json::Error),
     #[error(transparent)]
+    Termint(#[from] termint::Error),
+    #[error(transparent)]
     Raplay(#[from] raplay::Error),
     #[error("{0}")]
     Msg(String),

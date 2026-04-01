@@ -21,6 +21,15 @@ impl Timer {
         }
     }
 
+    /// Creates a timer preset from the given index.
+    pub fn from_index(id: usize) -> Option<Self> {
+        match id {
+            0 => Some(Timer::new(Duration::from_mins(25))),
+            1 => Some(Timer::new(Duration::from_mins(50))),
+            _ => None,
+        }
+    }
+
     /// Sets the work length to the given value.
     pub fn work(mut self, len: Duration) -> Self {
         self.work = len;

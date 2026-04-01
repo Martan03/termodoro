@@ -1,13 +1,10 @@
 use std::{
     fs::create_dir_all,
-    io::{Write, stdout},
-    panic::{set_hook, take_hook},
     process::{Command, ExitCode},
 };
 
-use crossterm::terminal::{disable_raw_mode, is_raw_mode_enabled};
 use pareg::Pareg;
-use termint::termal::eprintcln;
+use termint::{term::Term, termal::eprintcln};
 
 use crate::{
     app::App,
@@ -21,6 +18,7 @@ pub mod args;
 pub mod audio;
 pub mod config;
 pub mod error;
+pub mod message;
 pub mod stat;
 pub mod timer;
 pub mod tui;
@@ -36,8 +34,6 @@ fn main() -> ExitCode {
 }
 
 fn run() -> Result<(), Error> {
-    register_panic_hook();
-
     let args = Args::parse(Pareg::args())?;
     match args.action {
         Action::App(args) => run_app(args)?,
@@ -51,7 +47,9 @@ fn run() -> Result<(), Error> {
 fn run_app(args: AppArgs) -> Result<(), Error> {
     let timer = args.export();
     let mut app = App::new(timer);
-    app.run()
+
+    Term::default().setup()?.with_mouse().run(&mut app)?;
+    Ok(())
 }
 
 fn config() -> Result<(), Error> {
@@ -64,17 +62,4 @@ fn config() -> Result<(), Error> {
 
     Command::new(editor).arg(file).spawn()?.wait()?;
     Ok(())
-}
-
-fn register_panic_hook() {
-    let hook = take_hook();
-    set_hook(Box::new(move |pi| {
-        if is_raw_mode_enabled().unwrap_or_default() {
-            // Restores screen
-            print!("\x1b[?1049l\x1b[?25h");
-            _ = stdout().flush();
-            _ = disable_raw_mode();
-        }
-        hook(pi);
-    }));
 }
